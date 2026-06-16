@@ -9,7 +9,7 @@
 //    getFirstData: index(4LE) ++ [0x02,0x02]
 //    getNextData : index(4LE) ++ [0x00,0x02,0x01]
 //    decodeConfirmData: value = bytesToInt(data[7],data[6])
-//                       enacted = value >= threshold  (A09F2A → 'A' → régi → 500)
+//                       enacted = value >= threshold  (SN első karaktere 'A' → régi → 500)
 //    decodeConfirm() → nincs 3. üzenet (csak status olvasás).
 //
 //  threshold: SN első karaktere ∈ {0,1,3,A,D} → 500 (régi), különben 220.

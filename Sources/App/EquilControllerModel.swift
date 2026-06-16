@@ -140,7 +140,7 @@ final class EquilControllerModel: ObservableObject {
     //
     //  A dugattyút (pin) lépésenként (EQUIL_STEP_FILL=160) előretoljuk (CmdStepSet),
     //  majd ellenállást mérünk (CmdResistanceGet). Ha az ellenállás eléri a küszöböt
-    //  (A09F2A → A → régi pumpa → 500), a pin elérte a pisztont → delivery-ready.
+    //  (SN első karaktere 'A' → régi pumpa → 500), a pin elérte a pisztont → delivery-ready.
     //  Egyesével, külön kapcsolatokon (connect-per-command), max 32000 lépésig.
     private let primeStepFill = 160
     private let primeStepMax = 32000
