@@ -11,7 +11,7 @@ final class EquilControllerModel: ObservableObject {
     // MARK: UI state
     @Published var logLines: [String] = []
     @Published var btState: String = "ismeretlen"
-    @Published var serialNumber: String = "A09F2A"    // 6 hex (a pumpa SN-je / neve) — fix alapértelmezett
+    @Published var serialNumber: String = ""    // 6 hex (a pumpa SN-je / neve) — a felhasználó adja meg
     @Published var pairPassword: String = "0000"      // 4 hex (a pumpa jelszava)
     @Published var maxBolus: String = "25"            // max bólusz (E) — küszöbhöz
     @Published var maxBasal: String = "15"            // max basal (E/h) — küszöbhöz
