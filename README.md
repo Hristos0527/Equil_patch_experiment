@@ -1,5 +1,9 @@
 # Equil_patch_experiment — EquilController (iOS)
 
+> 🔧 **Fejlesztő/agent vagy, és a nulláról folytatnád?** Olvasd el előbb az
+> [AGENT_HANDOFF.md](AGENT_HANDOFF.md) fájlt — teljes technikai átadó,
+> architektúra, buktatók (RUN mód!), és a következő teendők.
+
 Saját iOS app az **Equil patch pumpa** (gen 1.0, firmware 5.3) vezérléséhez,
 BLE-n keresztül. A protokoll-réteg **byte-szinten követi** az
 [AndroidAPS](https://github.com/nightscout/AndroidAPS) Equil driverét (AGPL-3.0),
