@@ -191,6 +191,72 @@ struct ContentView: View {
                 .disabled(model.busy || model.pairedDevice.isEmpty)
             }
 
+            Divider().padding(.vertical, 2)
+
+            // --- Futási mód: SUSPEND / STOP ---
+            HStack(spacing: 8) {
+                Button(action: model.suspendPump) {
+                    Text("Felfüggesztés (SUSPEND)").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered).tint(.orange)
+                .disabled(model.busy || model.pairedDevice.isEmpty)
+
+                Button(action: model.stopPump) {
+                    Text("Leállítás (STOP)").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered).tint(.red)
+                .disabled(model.busy || model.pairedDevice.isEmpty)
+            }
+
+            // --- Állapot lekérdezések ---
+            HStack(spacing: 8) {
+                Button(action: model.queryInsulin) {
+                    Text("Tartály-állapot").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(model.busy || model.pairedDevice.isEmpty)
+
+                Button(action: model.queryHistory) {
+                    Text("Állapot/akku").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(model.busy || model.pairedDevice.isEmpty)
+            }
+
+            Divider().padding(.vertical, 2)
+
+            // --- Ideiglenes bazál (temp basal) ---
+            HStack {
+                Text("Temp E/h").frame(width: 70, alignment: .leading).font(.caption2)
+                TextField("0.5", text: $model.tempRate)
+                    .textFieldStyle(.roundedBorder)
+                    .keyboardType(.decimalPad)
+                    .focused($keyboardFocused)
+                TextField("perc", text: $model.tempDuration)
+                    .textFieldStyle(.roundedBorder)
+                    .keyboardType(.numberPad)
+                    .focused($keyboardFocused)
+            }
+            HStack(spacing: 8) {
+                Button(action: model.setTempBasal) {
+                    Text("Temp beállít").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent).tint(.blue)
+                .disabled(model.busy || model.pairedDevice.isEmpty)
+
+                Button(action: model.queryTempBasal) {
+                    Text("Temp lekérdez").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(model.busy || model.pairedDevice.isEmpty)
+
+                Button(action: model.cancelTempBasal) {
+                    Text("Temp töröl").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered).tint(.gray)
+                .disabled(model.busy || model.pairedDevice.isEmpty)
+            }
+
             if !model.pairedDevice.isEmpty {
                 Text("Párosítva ✓  device=\(model.pairedDevice.prefix(12))…")
                     .font(.caption2)

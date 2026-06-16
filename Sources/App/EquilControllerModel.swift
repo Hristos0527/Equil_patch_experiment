@@ -16,6 +16,8 @@ final class EquilControllerModel: ObservableObject {
     @Published var maxBolus: String = "25"            // max bólusz (E) — küszöbhöz
     @Published var maxBasal: String = "15"            // max basal (E/h) — küszöbhöz
     @Published var bolusUnits: String = "0.05"
+    @Published var tempRate: String = "0.5"           // temp basal ráta (E/h)
+    @Published var tempDuration: String = "30"        // temp basal időtartam (perc)
     @Published var busy: Bool = false
     @Published var statusLine: String = "Készenlét"
 
@@ -255,41 +257,161 @@ final class EquilControllerModel: ObservableObject {
         runCommandPerConnection(cmd, kind: "Futási mód lekérdezés")
     }
 
-    // MARK: - FUTÁSI MÓD (AAPS EquilPairConfirmFragment záró lépése)
-    //
-    //  A párosítás UTOLSÓ lépése az AAPS-ben CmdModelSet(RUN=1) — ez teszi a pumpát
-    //  bólusz-fogadó állapotba. NÉLKÜLE a pumpa némán eldobja a bólusz Msg2-t.
-    //  Külön gombbal kézzel kiváltható (a párosítás után).
+    // MARK: - SUSPEND / STOP (CmdModelSet mode=0 / mode=2)
 
-    /// RUN módba állítja a pumpát (CmdModelSet mode=1).
-    func setRunMode() {
-        guard !busy else { return }
-        guard !pairedDevice.isEmpty, !pairedPassword.isEmpty else {
-            append("⚠️ Előbb párosíts (nincs tárolt device/password)")
-            return
-        }
-        busy = true
-        statusLine = "Futási mód → RUN…"
-        append("=== FUTÁSI MÓD → RUN (CmdModelSet mode=1) ===")
-        let cmd = CmdModelSet(mode: 1,
-                              createTime: Int64(Date().timeIntervalSince1970 * 1000),
-                              equilDevice: pairedDevice, equilPassword: pairedPassword)
-        runCommandPerConnection(cmd, kind: "Futási mód RUN")
+    /// Felfüggeszti a pumpát (CmdModelSet mode=0 = SUSPEND).
+    func suspendPump() {
+        runModelSet(mode: 0, label: "SUSPEND (felfüggesztés)")
     }
 
-    /// Lekérdezi a pumpa aktuális futási módját (diagnózis).
-    func queryRunningMode() {
+    /// Leállítja a pumpát (CmdModelSet mode=2 = STOP).
+    func stopPump() {
+        runModelSet(mode: 2, label: "STOP (leállítás)")
+    }
+
+    private func runModelSet(mode: Int, label: String) {
         guard !busy else { return }
         guard !pairedDevice.isEmpty, !pairedPassword.isEmpty else {
             append("⚠️ Előbb párosíts (nincs tárolt device/password)")
             return
         }
         busy = true
-        statusLine = "Futási mód lekérdezése…"
-        append("=== FUTÁSI MÓD LEKÉRDEZÉS ===")
-        let cmd = CmdRunningModeGet(createTime: Int64(Date().timeIntervalSince1970 * 1000),
-                                    equilDevice: pairedDevice, equilPassword: pairedPassword)
-        runCommandPerConnection(cmd, kind: "Futási mód lekérdezés")
+        statusLine = "Futási mód → \(label)…"
+        append("=== FUTÁSI MÓD → \(label) (CmdModelSet mode=\(mode)) ===")
+        let cmd = CmdModelSet(mode: mode,
+                              createTime: Int64(Date().timeIntervalSince1970 * 1000),
+                              equilDevice: pairedDevice, equilPassword: pairedPassword)
+        runCommandPerConnection(cmd, kind: label)
+    }
+
+    // MARK: - TARTÁLY-ÁLLAPOT (CmdInsulinGet)
+
+    /// Lekérdezi a tartályban maradt inzulint (E).
+    func queryInsulin() {
+        guard !busy else { return }
+        guard !pairedDevice.isEmpty, !pairedPassword.isEmpty else {
+            append("⚠️ Előbb párosíts (nincs tárolt device/password)")
+            return
+        }
+        busy = true
+        statusLine = "Tartály-állapot lekérdezése…"
+        append("=== TARTÁLY-ÁLLAPOT LEKÉRDEZÉS (CmdInsulinGet) ===")
+        let cmd = CmdInsulinGet(createTime: Int64(Date().timeIntervalSince1970 * 1000),
+                                equilDevice: pairedDevice, equilPassword: pairedPassword)
+        runCommandPerConnection(cmd, kind: "Tartály-állapot") { [weak self] outcome in
+            guard let self else { return }
+            switch outcome {
+            case .success:
+                self.append("💧 Maradék inzulin a tartályban: \(cmd.insulin) E")
+                self.statusLine = "Tartály: \(cmd.insulin) E"
+            case .failure(let msg):
+                self.append("❌ Tartály-állapot HIBA: \(msg)")
+                self.statusLine = "Tartály: HIBA — \(msg)"
+            }
+            self.busy = false
+            self.ble.onReady = nil; self.ble.onConnected = nil
+        }
+    }
+
+    // MARK: - ELŐZMÉNYEK / ÁLLAPOT (CmdHistoryGet)
+
+    /// Lekérdezi a pumpa aktuális állapotát (akku, tartály, idő, utolsó dózis).
+    func queryHistory() {
+        guard !busy else { return }
+        guard !pairedDevice.isEmpty, !pairedPassword.isEmpty else {
+            append("⚠️ Előbb párosíts (nincs tárolt device/password)")
+            return
+        }
+        busy = true
+        statusLine = "Állapot/előzmény lekérdezése…"
+        append("=== ELŐZMÉNYEK/ÁLLAPOT LEKÉRDEZÉS (CmdHistoryGet) ===")
+        let cmd = CmdHistoryGet(currentIndex: 0,
+                                createTime: Int64(Date().timeIntervalSince1970 * 1000),
+                                equilDevice: pairedDevice, equilPassword: pairedPassword)
+        runCommandPerConnection(cmd, kind: "Állapot") { [weak self] outcome in
+            guard let self else { return }
+            switch outcome {
+            case .success:
+                self.append("🔋 Akku=\(cmd.battery)%  💧tartály=\(cmd.medicine)  ráta=\(cmd.rate)  idő=\(cmd.ts)  idx=\(cmd.recordIndex)")
+                self.statusLine = "Akku \(cmd.battery)% · tartály \(cmd.medicine)"
+            case .failure(let msg):
+                self.append("❌ Állapot HIBA: \(msg)")
+                self.statusLine = "Állapot: HIBA — \(msg)"
+            }
+            self.busy = false
+            self.ble.onReady = nil; self.ble.onConnected = nil
+        }
+    }
+
+    // MARK: - IDEIGLENES BAZÁL (CmdTempBasalSet / CmdTempBasalGet)
+
+    /// Beállít egy ideiglenes bazált (ráta E/h + időtartam perc).
+    func setTempBasal() {
+        guard !busy else { return }
+        guard !pairedDevice.isEmpty, !pairedPassword.isEmpty else {
+            append("⚠️ Előbb párosíts (nincs tárolt device/password)")
+            return
+        }
+        guard let rate = Double(tempRate), rate >= 0,
+              let dur = Int(tempDuration), dur > 0 else {
+            append("⚠️ Érvénytelen temp basal (ráta E/h vagy időtartam perc)")
+            return
+        }
+        busy = true
+        statusLine = "Temp basal \(rate) E/h \(dur) perc…"
+        append("=== TEMP BASAL START: \(rate) E/h, \(dur) perc ===")
+        let cmd = CmdTempBasalSet(insulin: rate, duration: dur,
+                                  createTime: Int64(Date().timeIntervalSince1970 * 1000),
+                                  equilDevice: pairedDevice, equilPassword: pairedPassword)
+        runCommandPerConnection(cmd, kind: "Temp basal")
+    }
+
+    /// Törli az aktuális ideiglenes bazált (insulin=0 → cancel).
+    func cancelTempBasal() {
+        guard !busy else { return }
+        guard !pairedDevice.isEmpty, !pairedPassword.isEmpty else {
+            append("⚠️ Előbb párosíts (nincs tárolt device/password)")
+            return
+        }
+        busy = true
+        statusLine = "Temp basal törlése…"
+        append("=== TEMP BASAL TÖRLÉS (cancel) ===")
+        let cmd = CmdTempBasalSet(insulin: 0, duration: 0,
+                                  createTime: Int64(Date().timeIntervalSince1970 * 1000),
+                                  equilDevice: pairedDevice, equilPassword: pairedPassword)
+        runCommandPerConnection(cmd, kind: "Temp basal törlés")
+    }
+
+    /// Lekérdezi az aktuális ideiglenes bazált.
+    func queryTempBasal() {
+        guard !busy else { return }
+        guard !pairedDevice.isEmpty, !pairedPassword.isEmpty else {
+            append("⚠️ Előbb párosíts (nincs tárolt device/password)")
+            return
+        }
+        busy = true
+        statusLine = "Temp basal lekérdezése…"
+        append("=== TEMP BASAL LEKÉRDEZÉS (CmdTempBasalGet) ===")
+        let cmd = CmdTempBasalGet(createTime: Int64(Date().timeIntervalSince1970 * 1000),
+                                  equilDevice: pairedDevice, equilPassword: pairedPassword)
+        runCommandPerConnection(cmd, kind: "Temp basal lekérdezés") { [weak self] outcome in
+            guard let self else { return }
+            switch outcome {
+            case .success:
+                if cmd.step == 0 {
+                    self.append("⏱️ Nincs aktív temp basal (step=0)")
+                    self.statusLine = "Temp basal: nincs aktív"
+                } else {
+                    self.append("⏱️ Aktív temp basal: ≈\(String(format: "%.2f", cmd.rate)) E/h, hátralévő \(cmd.durationMinutes) perc")
+                    self.statusLine = "Temp: \(String(format: "%.2f", cmd.rate)) E/h · \(cmd.durationMinutes)p"
+                }
+            case .failure(let msg):
+                self.append("❌ Temp basal lekérdezés HIBA: \(msg)")
+                self.statusLine = "Temp basal: HIBA — \(msg)"
+            }
+            self.busy = false
+            self.ble.onReady = nil; self.ble.onConnected = nil
+        }
     }
 
     /// Connect-per-command futtató: pause watchdog → friss connect → onReady-re run() → resume.
