@@ -1,0 +1,36 @@
+name: EquilController
+options:
+  bundleIdPrefix: app.equil
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    DEVELOPMENT_TEAM: DF6M6737H2
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    MARKETING_VERSION: "0.1"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  EquilController:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    info:
+      path: Info.plist
+      properties:
+        NSBluetoothAlwaysUsageDescription: "Az Equil pumpa Bluetooth-kapcsolaton keresztuli parositasahoz es vezerlesehez."
+        NSBluetoothPeripheralUsageDescription: "Az Equil pumpa Bluetooth-kapcsolaton keresztuli parositasahoz es vezerlesehez."
+        NSLocalNetworkUsageDescription: "A belso HTTP log-szerverhez (a fejleszto a helyi halozaton olvassa a naplot)."
+        NSBonjourServices:
+          - "_http._tcp"
+        UIBackgroundModes:
+          - bluetooth-central
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.equil.controller
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        GENERATE_INFOPLIST_FILE: NO
